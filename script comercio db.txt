@@ -1,0 +1,331 @@
+--Autor: Oscar Armando Miticanoy
+--
+--Para este reto se creo Un base de datos con el nombre [ComercioDB] y luego las siguientes tablas
+
+
+CREATE TABLE [dbo].[roles](
+	[id_rol] [int] IDENTITY(1,1) NOT NULL,
+	[descripcion] [varchar](50) NOT NULL,
+ CONSTRAINT [PK_roles] PRIMARY KEY CLUSTERED 
+(
+	[id_rol] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+
+
+
+
+CREATE TABLE [dbo].[usuarios](
+	[id_usuario] [int] IDENTITY(1,1) NOT NULL,
+	[nombre] [varchar](50) NOT NULL,
+	[correo] [nchar](200) NOT NULL,
+	[pasword] [varchar](200) NOT NULL,
+	[id_rol] [int] NOT NULL,
+ CONSTRAINT [PK_usuarios] PRIMARY KEY CLUSTERED 
+(
+	[id_usuario] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[usuarios]  WITH CHECK ADD  CONSTRAINT [FK_usuarios_roles] FOREIGN KEY([id_rol])
+REFERENCES [dbo].[roles] ([id_rol])
+GO
+
+ALTER TABLE [dbo].[usuarios] CHECK CONSTRAINT [FK_usuarios_roles]
+
+
+
+CREATE TABLE [dbo].[roles](
+	[id_rol] [int] IDENTITY(1,1) NOT NULL,
+	[descripcion] [varchar](50) NOT NULL,
+ CONSTRAINT [PK_roles] PRIMARY KEY CLUSTERED 
+(
+	[id_rol] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+
+
+
+
+CREATE TABLE [dbo].[comerciantes](
+	[id_comerciante] [int] IDENTITY(1,1) NOT NULL,
+	[nombre] [varchar](50) NOT NULL,
+	[municipio] [varchar](200) NOT NULL,
+	[telefono] [varchar](50) NULL,
+	[correo] [varchar](200) NULL,
+	[fecha_registro] [datetime] NOT NULL,
+	[estado] [bit] NOT NULL,
+ CONSTRAINT [PK_comerciantes] PRIMARY KEY CLUSTERED 
+(
+	[id_comerciante] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+
+
+
+CREATE TABLE [dbo].[establecimientos](
+	[id_establecimiento] [int] IDENTITY(1,1) NOT NULL,
+	[nombre] [varchar](50) NOT NULL,
+	[ingresos] [decimal](18, 2) NOT NULL,
+	[numero_empleados] [int] NOT NULL,
+	[id_comerciante] [int] NOT NULL,
+ CONSTRAINT [PK_establecimientos] PRIMARY KEY CLUSTERED 
+(
+	[id_establecimiento] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[establecimientos]  WITH CHECK ADD  CONSTRAINT [FK_establecimientos_comerciantes] FOREIGN KEY([id_comerciante])
+REFERENCES [dbo].[comerciantes] ([id_comerciante])
+GO
+
+ALTER TABLE [dbo].[establecimientos] CHECK CONSTRAINT [FK_establecimientos_comerciantes]
+GO
+
+
+
+
+CREATE TABLE [dbo].[Auditorias](
+	[id_auditoria] [int] IDENTITY(1,1) NOT NULL,
+	[tipo] [varchar](20) NOT NULL,
+	[fecha_actualizacion] [datetime] NOT NULL,
+	[usuario] [varchar](20) NOT NULL,
+	[Id_comerciante] [int] NULL,
+	[id_establecimiento] [int] NULL,
+ CONSTRAINT [PK_Auditorias] PRIMARY KEY CLUSTERED 
+(
+	[id_auditoria] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[Auditorias]  WITH CHECK ADD  CONSTRAINT [FK_Auditorias_comerciantes] FOREIGN KEY([Id_comerciante])
+REFERENCES [dbo].[comerciantes] ([id_comerciante])
+GO
+
+ALTER TABLE [dbo].[Auditorias] CHECK CONSTRAINT [FK_Auditorias_comerciantes]
+GO
+
+ALTER TABLE [dbo].[Auditorias]  WITH CHECK ADD  CONSTRAINT [FK_Auditorias_establecimientos] FOREIGN KEY([id_establecimiento])
+REFERENCES [dbo].[establecimientos] ([id_establecimiento])
+GO
+
+ALTER TABLE [dbo].[Auditorias] CHECK CONSTRAINT [FK_Auditorias_establecimientos]
+GO
+
+
+
+
+/****** crearcion de trigger para comerciantes y establecimientos pra auditoria******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER TRIGGER [dbo].[insertcomerciante] 
+   ON  [dbo].[comerciantes] 
+   AFTER INSERT
+AS 
+BEGIN TRY
+	--DECLARE @idcomerciante AS INT =  (SELECT @@IDENTITY from [dbo].[comerciantes])
+	DECLARE @idcomerciante AS INT = (SELECT id_comerciante FROM inserted )
+	INSERT INTO dbo.Auditorias(tipo, fecha_actualizacion, usuario, Id_comerciante)
+	VALUES ('comerciante', GETDATE(), SUSER_SNAME(), @idcomerciante)
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+
+    THROW;
+END CATCH;
+
+
+
+
+GO
+
+
+
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER TRIGGER [dbo].[insertestablecimiento]
+   ON  [dbo].[establecimientos] 
+   AFTER INSERT
+AS 
+BEGIN TRY
+	--DECLARE @idestablecimiento AS INT = IDENT_CURRENT( 'establecimientos' ) 
+	DECLARE @idestablecimiento AS INT = (SELECT id_establecimiento FROM inserted )
+	INSERT INTO dbo.Auditorias(tipo, fecha_actualizacion, usuario, id_establecimiento)
+	VALUES ('establecimiento', GETDATE(), SUSER_SNAME(), @idestablecimiento )
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+
+    THROW;
+END CATCH;
+
+
+/****** creacion de usuarios de bases de datos ******/
+CREATE LOGIN useradministrador WITH PASSWORD = '1234';
+
+CREATE USER administrador for login useradministrador;
+
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[Auditorias]
+TO administrador
+WITH GRANT OPTION
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[comerciantes]
+TO administrador
+WITH GRANT OPTION
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[establecimientos]
+TO administrador
+WITH GRANT OPTION
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[usuarios]
+TO administrador
+WITH GRANT OPTION
+
+
+
+
+CREATE LOGIN userauxiliar WITH PASSWORD = '1234';
+
+CREATE USER auxiliarrdeegistro for login userauxiliar;
+
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[Auditorias]
+TO auxiliarrdeegistro
+WITH GRANT OPTION
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[comerciantes]
+TO auxiliarrdeegistro
+WITH GRANT OPTION
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[establecimientos]
+TO auxiliarrdeegistro
+WITH GRANT OPTION
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON [dbo].[usuarios]
+TO auxiliarrdeegistro
+WITH GRANT OPTION
+
+
+
+/****** insercion de datos a la DB ******/
+
+INSERT INTO [dbo].[roles] ([descripcion]) VALUES ('Administrador');
+
+INSERT INTO [dbo].[roles] ([descripcion]) VALUES ('auxiliarderegistro')	   
+
+INSERT INTO [dbo].[usuarios] ([nombre], [correo], [pasword], [id_rol])
+     VALUES ('juan pablo', 'juanpablo@gamil.com', '123456', 1);
+
+INSERT INTO [dbo].[usuarios] ([nombre], [correo], [pasword], [id_rol])
+     VALUES ('diego fernando', 'diegofernando@gamil.com', '123456', 1);
+
+INSERT INTO [dbo].[usuarios] ([nombre], [correo], [pasword], [id_rol])
+     VALUES ('luis carlos', 'luiscarlos@gamil.com', '123456', 2);
+
+INSERT INTO [dbo].[usuarios] ([nombre], [correo], [pasword], [id_rol])
+     VALUES ('maria jose', 'mariajose@gamil.com', '123456', 2);
+	 
+
+INSERT INTO [dbo].[comerciantes] ([nombre], [municipio], [telefono], [correo], [fecha_registro], [estado])
+     VALUES ('camilo', 'Cali' , '5549977', 'camilo@gmail.com', CAST ('2025-01-23 20:44:11' AS DATETIME), 1)
+
+INSERT INTO [dbo].[comerciantes] ([nombre], [municipio], [telefono], [correo], [fecha_registro], [estado])
+     VALUES ('pablo', 'Cali' , '3342265', 'pablo@gmail.com', CAST ('2025-01-30 20:44:11' AS DATETIME), 1)
+
+INSERT INTO [dbo].[comerciantes] ([nombre], [municipio], [telefono], [correo], [fecha_registro], [estado])
+     VALUES ('luisa', 'Bogota' , '5555555', 'luisa@gmail.com', CAST ('2025-02-10 20:44:11' AS DATETIME), 1)
+
+INSERT INTO [dbo].[comerciantes] ([nombre], [municipio], [telefono], [correo], [fecha_registro], [estado])
+     VALUES ('camila', 'Bogota' , '6666666', 'camila@gmail.com', CAST ('2025-02-15 20:44:11' AS DATETIME), 1)
+
+INSERT INTO [dbo].[comerciantes] ([nombre], [municipio], [telefono], [correo], [fecha_registro], [estado])
+     VALUES ('jorge', 'Cali' , '5678945', 'jorge@gmail.com', CAST ('2025-02-16 20:44:11' AS DATETIME), 1)
+	 la casa del arroz
+
+
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('la casa del arroz',200000.22,5, 9)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('frisbi',359000.00,10, 9)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('carbonero',15000.99,3, 9)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('1135269836-3',289000.25,3, 10)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('monserrat',500000.80,8, 11)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('cadena sa',100000.00,2, 12)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('estudiof',200000.22,5, 12)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('macro',430000.00,7, 13)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('michellin',500000.40,10, 13)
+
+INSERT INTO [dbo].[establecimientos] ([nombre], [ingresos], [numero_empleados], [id_comerciante])
+     VALUES ('market unico',180000.50,4, 13)
+	 
+	 
+	 
+/****** creacion de procedimiento almacenado para consulta ******/
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		Oscar miticanoy
+-- Create date: 3-2-2025
+-- =============================================
+CREATE PROCEDURE reportecomerciantes
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+	SELECT C.id_comerciante, E.nombre, C.municipio, C.telefono, C.correo, C.fecha_registro, 
+			(CASE WHEN C.estado = 1 THEN 'Activo' ELSE 'Inactivo' END) AS [Estado],
+			COUNT(E.id_comerciante) AS [Cantidad de Establecimientos], 
+			SUM(E.ingresos) AS [Total Ingresos], 
+			SUM(E.numero_empleados) AS [Cantidad de Empleados]
+	from [dbo].[comerciantes] AS C
+	LEFT OUTER JOIN [dbo].[establecimientos] AS E
+	ON C.id_comerciante = E.id_comerciante 
+	GROUP BY C.id_comerciante, E.nombre, C.municipio, C.telefono, C.correo, C.fecha_registro, C.estado, E.id_establecimiento, E.ingresos, E.numero_empleados
+	HAVING C.estado = 1
+	ORDER BY C.id_comerciante DESC
+
+END
+GO
